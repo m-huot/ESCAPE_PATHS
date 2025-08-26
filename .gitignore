@@ -1,14 +1,8 @@
-covid/exp_data/*
 covid/ab_resilience/exp_data/*
-covid/data/*
-covid/PGM/*
-covid/rbms/*
 bash_scripts/*
-*.npy
-*.csv
 *.fasta
 *.pkl
-*.png
 *.txt
-*.npz
+*.npy
 *.pyc
+*.png
