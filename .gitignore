@@ -1,8 +1,7 @@
-covid/ab_resilience/exp_data/*
+lattice/paths/*
+covid/ab_resilience/escape_vectors/*
+covid/paths/*
+covid/paths_nt/*
+mean_field_theory/results_scripts/*
 bash_scripts/*
-*.fasta
-*.pkl
-*.txt
-*.npy
 *.pyc
-*.png
