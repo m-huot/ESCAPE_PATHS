@@ -1,6 +1,6 @@
-# EscapeMap
+# Escape Funnels
 
-**EscapeMap** provides an **MCMC and mean-field framework** to study how viral proteins evolve under immune pressure, with a focus on identifying **evolutionary funnels that drive antibody escape**.
+**Escape Funnels** provides an **MCMC and mean-field framework** to study how viral proteins evolve under immune pressure, with a focus on identifying **evolutionary funnels that drive antibody escape**.
 
 ![Schematic Overview](schematic.png)
 
