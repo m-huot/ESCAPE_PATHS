@@ -2,6 +2,13 @@
 
 **Escape Funnels** provides an **MCMC and mean-field framework** to study how viral proteins evolve under immune pressure, with a focus on identifying **evolutionary funnels that drive antibody escape**.
 
+## Data
+
+Unzip all folders within repository so that the repository has direct access to the extracted files: lattice/paths.zip, covid/ab_resilience/escape_vectors.zip, covid/paths.zip, covid/paths_nt.zip .
+
+Download the dataset from [Zenodo](https://doi.org/10.5281/zenodo.17016973) and place it in the `mean_field_theory/` directory.  
+
+
 ![Schematic Overview](schematic.png)
 
 ---
