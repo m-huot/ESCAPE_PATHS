@@ -183,7 +183,7 @@ def main():
     parser.add_argument(
         "--beta",
         type=float,
-        default=1.0,
+        default=1000.0,
         help="Inverse temperature for the Monte Carlo simulation.",
     )
     parser.add_argument(
@@ -199,7 +199,10 @@ def main():
         help="Monte Carlo steps for warming up.",
     )
     parser.add_argument(
-        "--msa_size", type=int, default=10, help="Number of sequences in the final MSA."
+        "--msa_size",
+        type=int,
+        default=100,
+        help="Number of sequences in the final MSA.",
     )
     parser.add_argument(
         "--output_file",

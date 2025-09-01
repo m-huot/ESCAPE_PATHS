@@ -104,7 +104,7 @@ def main(args):
             path_data.append(a)
 
         path_data = np.array(path_data).T
-        output_path = os.path.join(args.out_folder, f"{folder}.npy")
+        output_path = os.path.join(args.out_folder, f"{folder}a.npy")
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         np.save(output_path, path_data)
 
@@ -116,10 +116,13 @@ if __name__ == "__main__":
         description="Mean field AA frequency computation for COVID paths"
     )
     parser.add_argument(
-        "--folder", type=str, default="results_scripts", help="Input folder"
+        "--folder", type=str, default="results_scripts/covid_D_20", help="Input folder"
     )
     parser.add_argument(
-        "--out_folder", type=str, default="paths_proba", help="Output folder"
+        "--out_folder",
+        type=str,
+        default="results_scripts/covid_D_20",
+        help="Output folder",
     )
     parser.add_argument("--beta_rbm", type=float, default=1, help="Beta rbm")
 

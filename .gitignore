@@ -3,5 +3,6 @@ covid/ab_resilience/escape_vectors/*
 covid/paths/*
 covid/paths_nt/*
 mean_field_theory/results_scripts/*
+results_scripts.zip
 bash_scripts/*
 *.pyc

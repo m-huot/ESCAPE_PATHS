@@ -67,7 +67,7 @@ if __name__ == "__main__":
         "--n_path", type=int, default=100, help="Number of paths to generate"
     )
     parser.add_argument(
-        "--T", type=int, default=19, help="Temperature for the path generation"
+        "--T", type=int, default=20, help="Temperature for the path generation"
     )
     parser.add_argument(
         "--beta_w", type=float, default=1, help="Weight for the additional energy term"
