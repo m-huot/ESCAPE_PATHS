@@ -8,6 +8,8 @@ Unzip all folders within repository so that the repository has direct access to 
 
 Download the dataset from [Zenodo](https://doi.org/10.5281/zenodo.17016973) and place it in the `mean_field_theory/` directory.  
 
+Clone PGM repository (https://github.com/jertubiana/PGM) inside main folder.
+
 
 ![Schematic Overview](schematic.png)
 
