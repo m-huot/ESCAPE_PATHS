@@ -269,8 +269,8 @@ if __name__ == "__main__":
         description="Mean field implementation using real COVID model."
     )
     parser.add_argument("--T", type=int, default=20, help="Number of time steps")
-    parser.add_argument("--N_ITER", type=int, default=5, help="Number of iterations")
-    parser.add_argument("--EPS", type=float, default=0.5, help="Step size")
+    parser.add_argument("--N_ITER", type=int, default=200, help="Number of iterations")
+    parser.add_argument("--EPS", type=float, default=0.05, help="Step size")
     parser.add_argument("--D", type=float, default=20, help="Gamma coefficient")
 
     parser.add_argument(
