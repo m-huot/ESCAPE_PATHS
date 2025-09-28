@@ -15,6 +15,7 @@ sys.path.append(main_path + "path/")
 from importlib import reload, import_module
 from path import *
 import lattice
+from Site_indep_model import *
 
 CODE_LATTICE = [
     "C",
@@ -74,7 +75,13 @@ def P_fixation(v, v_prime):
     return 0
 
 
-class customed_lattice:
+RBM = RBM_utils.loadRBM("rbm/RBM_structure_0_beta_1000")
+msa = Proteins_utils.load_FASTA("msa/output_msa_structure_0_beta_1000.fasta")
+INDEP_MODEL = SiteIndependentModel()
+INDEP_MODEL.fit(msa)
+
+
+class customed_lattice_RBM:
     def __init__(self, Lattice_model, w=None, beta_w=0, beta_lattice=1000):
         self.Lattice_model = Lattice_model
         self.w = w
@@ -82,9 +89,7 @@ class customed_lattice:
         self.beta_lattice = beta_lattice
 
     def __call__(self, v):
-        v_string = Proteins_utils.num2seq(v)
-        v_transfo = lattice.string2seq(v_string)
-        score = np.log(self.Lattice_model(v_transfo)) * self.beta_lattice
+        score = RBM.likelihood(v)
         if self.w is not None:
             # score += self.beta_w * np.dot(one_hot_encode_concat(v), self.w)
             epsilon = 0.01  # min binding
@@ -94,6 +99,33 @@ class customed_lattice:
                     -epsilon - self.beta_w * np.dot(one_hot_encode_concat(v), self.w)
                 )
             )
+            # make score to scalar if array
+        if isinstance(score, np.ndarray):
+            score = score.item()
+        return score
+
+
+class customed_lattice_indep:
+    def __init__(self, Lattice_model, w=None, beta_w=0, beta_lattice=1000):
+        self.Lattice_model = Lattice_model
+        self.w = w
+        self.beta_w = beta_w
+        self.beta_lattice = beta_lattice
+
+    def __call__(self, v):
+        score = INDEP_MODEL.log_prob(v)
+        if self.w is not None:
+            # score += self.beta_w * np.dot(one_hot_encode_concat(v), self.w)
+            epsilon = 0.01  # min binding
+            score += np.log(
+                1
+                - np.exp(
+                    -epsilon - self.beta_w * np.dot(one_hot_encode_concat(v), self.w)
+                )
+            )
+        # make score to scalar if array
+        if isinstance(score, np.ndarray):
+            score = score.item()
         return score
 
 
@@ -132,7 +164,7 @@ def main():
 
     for T in [6]:
         for beta_w in beta_array:
-            customed_model = customed_lattice(
+            customed_model = customed_lattice_RBM(
                 lattice_model, w=w, beta_w=beta_w, beta_lattice=1000
             )
             path = Path(
@@ -145,7 +177,29 @@ def main():
                 T=T,
             )
 
-            output_dir = f"paths/test_w_upper_T{T}_beta_w_{beta_w}/"
+            output_dir = f"paths/w_upper_T{T}_beta_w_{beta_w}/"
+            path.generate_paths(
+                output_directory=output_dir,
+                warming_steps=args.warming_steps,
+                sampling_steps=args.sampling_steps,
+                paths_nb=args.n_path,
+                verbose=False,
+            )
+
+            customed_model = customed_lattice_indep(
+                lattice_model, w=w, beta_w=beta_w, beta_lattice=1000
+            )
+            path = Path(
+                v_start=PROTEIN_INIT,
+                beta_pi=1,
+                beta_rbm=1,
+                Pi=P_fixation,
+                Rbm=customed_model,
+                code=CODE_RBM,
+                T=T,
+            )
+
+            output_dir = f"paths/indep_w_upper_T{T}_beta_w_{beta_w}/"
             path.generate_paths(
                 output_directory=output_dir,
                 warming_steps=args.warming_steps,

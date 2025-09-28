@@ -1,116 +1,99 @@
-import os
-import sys
-import argparse
-import torch
+# %% [markdown]
+# # Path lattice
+# A path = consecutive sequences
+
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
-from itertools import product
-from tqdm import tqdm
-from utils_mean_field import *
+import pandas as pd
+import pickle
+import torch
 
-# Global imports (must be outside the function)
+import os, sys
+
 main_path = "../"
+
 sys.path.append(main_path + "PGM/source/")
 sys.path.append(main_path + "PGM/utilities/")
-sys.path.append(main_path + "covid/")
-os.chdir(main_path + "covid/")
+import utilities, Proteins_utils, sequence_logo, plots_utils, RBM_utils
 
-from global_variables import *
-from utils_evaluate_seq import *
+sys.path.append(main_path + "path/")
+sys.path.append(main_path + "lattice/")
 
-os.chdir("../mean_field_theory")
+# importlib
 
+from importlib import reload, import_module
+
+from path import *
+
+import lattice
 from utils_rbm_mean_field import *
 
-import utilities, Proteins_utils, sequence_logo, plots_utils
 
-
-def get_FASTA_names(path):
-    """
-    Extracts sequence names from a FASTA file.
-
-    Args:
-        path (str): Path to the FASTA file.
-
-    Returns:
-        List[str]: A list of sequence names (without the '>' character).
-    """
-    names = []
-    with open(path, "r") as f:
-        for line in f:
-            if line.startswith(">"):
-                names.append(line[1:].strip())
-    return names
+# %% [markdown]
+# # Parameters
 
 
 def main(args):
-    os.chdir(main_path + "covid/")
+    # %%
+    RBM = RBM_utils.loadRBM("../lattice/rbm/RBM_structure_0_beta_1000")
 
-    # Load protein sequences
-    # PROT_INIT = Proteins_utils.load_FASTA("../covid/exp_data/wt_omicron.fasta")[0][
-    #     BEGIN:-END
-    # ]
-    # Load sequences and names
+    # %%
+    PROTEIN_INIT = Proteins_utils.load_FASTA(
+        "../lattice/msa/output_msa_structure_0_beta_1000.fasta"
+    )[0]  # Load the protein sequence from the FASTA file.
 
-    fasta_path = "../covid/gisaid/sequences_vocs.fasta"
-    all_seqs = Proteins_utils.load_FASTA(fasta_path)
-    all_names = get_FASTA_names(fasta_path)
+    sites = np.array([9, 10, 11, 12, 13, 16, 17, 25, 26]) - 1
+    print("sites upper face", sites)
+    w_bias = np.zeros((PROTEIN_INIT.shape[0], 20, 1))
+    for site in sites:
+        wt_aa = PROTEIN_INIT[site]
+        print("wt_aa", Proteins_utils.num2seq(np.array([wt_aa])))
+        # put a 1 everywhere except for the wt_aa
+        for i in range(20):
+            if i != wt_aa:
+                w_bias[site, i, 0] = 1 * args.beta_w
 
-    # Map from name to sequence
-    name_to_seq = dict(zip(all_names, all_seqs))
-
-    # Select by background
-    if args.background not in name_to_seq:
-        raise ValueError(f"Background '{args.background}' not found in {fasta_path}")
-
-    PROT_INIT = name_to_seq[args.background][BEGIN:-END]
-
-    L = PROT_INIT.shape[0]
+    L = PROTEIN_INIT.shape[0]
     Q = 20
-
     T = args.T + 1
 
     # Constants
-    GAMMA = args.D / L  # D/L
+    GAMMA = args.D / L
     Q_C = 1 - GAMMA / args.T
-
-    # Antibody weights
-    ab_names = list(ESCAPE_VECTORS.keys())
-    wab = np.zeros((L, Q, len(ab_names)))
-    for idx, ab in enumerate(ab_names):
-        w_ab = ESCAPE_VECTORS[ab].reshape(L, Q)  # "no bias"
-        wab[:, :, idx] = w_ab
-
-    # make sure only<=0 coeffs
-    for i in range(len(ab_names)):
-        if np.any(wab[:, :, i] > 0):
-            raise ValueError(f"Escape vector {ab_names[i]} has positive coeffs")
+    beta_rbm = args.beta_rbm
 
     # RBM weights
     wgamma = np.transpose(RBM.weights[:, :, :], (1, 2, 0))
-    g = np.expand_dims(RBM.vlayer.fields[:, :], axis=-1)
+    g = np.array(np.expand_dims(RBM.vlayer.fields[:, :], axis=-1))
+    print("g", g.shape)
     gamma_f_list = create_gamma_functions(
         torch.tensor(RBM.hlayer.gamma_plus),
         torch.tensor(RBM.hlayer.gamma_minus),
         torch.tensor(RBM.hlayer.theta_plus),
         torch.tensor(RBM.hlayer.theta_minus),
-        beta_rbm=args.beta_rbm,
+        beta_rbm=beta_rbm,
     )
 
     all_s_functions = []
     w_components = []
     name_array = []
 
-    ab_function_list = create_ab_functions(len(ab_names), args.beta_ab)
-    all_s_functions.extend(ab_function_list)
-    w_components.append(wab)
-    name_array.extend(ab_names)
-
     w_components.append(wgamma)
     all_s_functions.extend(gamma_f_list)
     name_array.extend(["gamma " + str(i) for i in range(len(gamma_f_list))])
 
     w = torch.tensor(np.concatenate(w_components, axis=-1))
+
+    # add escape
+    def escape_function(G_t):
+        epsilon = 0.01
+        return -torch.log(1 - torch.exp(-epsilon - G_t))
+
+    all_s_functions.append(escape_function)
+    name_array.append("escape")
+    w = torch.cat((w, torch.tensor(w_bias)), dim=-1)
+
     K = len(name_array)
 
     print(f"Number of functions: {K}")
@@ -121,7 +104,7 @@ def main(args):
     m_0 = torch.zeros(K)
 
     for k in range(K):
-        m_0[k] = sum(w[i, PROT_INIT[i], k] for i in range(len(PROT_INIT))) / L
+        m_0[k] = sum(w[i, PROTEIN_INIT[i], k] for i in range(len(PROTEIN_INIT))) / L
 
     mint = torch.zeros(T, K)
     for t in range(1, T):
@@ -149,8 +132,7 @@ def main(args):
     if torch.isnan(w).any():
         print("w has nan at init")
         raise ValueError("w has nan at init")
-
-    # Perform gradient descent
+        # Perform gradient descent
     mopt, qopt, m_array, q_array, dm_array, dq_array, qhat_array, mhat_array = (
         GradDescent_free(
             mstart=m,
@@ -165,14 +147,14 @@ def main(args):
             L=L,
             Q=Q,
             Q_C=Q_C,
-            protein_init=PROT_INIT,
+            protein_init=PROTEIN_INIT,
             MU=args.MU,
             phi=args.phi,
         )
     )
 
     # Save results
-    os.chdir("../mean_field_theory")
+    os.chdir("../mean_field_theory/results_scripts/lattice")
     folder = args.folder
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -244,7 +226,7 @@ def main(args):
     plt.tight_layout()
 
     # Save the figure with high resolution for publication
-    plt.savefig(args.folder + "/Q_Evolution_covid.png", dpi=300)
+    plt.savefig(args.folder + "/Q_Evolution_lattice.png", dpi=300)
 
     # Show the plot
     plt.show()
@@ -292,24 +274,23 @@ def main(args):
 
     # Adjust layout for clarity
     plt.tight_layout()
-    plt.savefig(args.folder + "/m_Evolution_covid.png", dpi=300)
+    plt.savefig(args.folder + "/m_Evolution_lattice.png", dpi=300)
 
     plt.show()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Mean field implementation using real COVID model."
+        description="Mean field implementation lattice model."
     )
-    parser.add_argument("--T", type=int, default=20, help="Number of time steps")
+    parser.add_argument("--T", type=int, default=6, help="Number of time steps")
     parser.add_argument("--N_ITER", type=int, default=200, help="Number of iterations")
     parser.add_argument("--EPS", type=float, default=0.05, help="Step size")
-    parser.add_argument("--D", type=float, default=20, help="Gamma coefficient")
+    parser.add_argument("--D", type=float, default=6, help="Gamma coefficient")
 
     parser.add_argument(
         "--folder", type=str, default="results_script", help="Output folder"
     )
-    parser.add_argument("--beta_ab", type=float, default=1, help="Beta ab")
     parser.add_argument("--beta_rbm", type=float, default=1, help="Beta rbm")
     parser.add_argument("--beta_phi", type=float, default=1, help="Beta phi")
     parser.add_argument("--MU", type=float, default=0.01, help="Mutation rate phi evo")
@@ -320,12 +301,7 @@ if __name__ == "__main__":
         default="cont",
         help="Phi continuity type",
     )
-    parser.add_argument(
-        "--background",
-        type=str,
-        default="WT",
-        help="Variant background to initialize from (e.g. WT, BQ, Alpha)",
-    )
+    parser.add_argument("--beta_w", type=float, default=1, help="Immune pressure")
 
     args = parser.parse_args()
     main(args)

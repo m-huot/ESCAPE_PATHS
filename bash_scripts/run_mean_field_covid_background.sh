@@ -7,12 +7,12 @@
 #SBATCH -t 23:00:00                   # Walltime per task
 #SBATCH -o mf_background_outfile.out  # Standard output
 #SBATCH -e mf_background_errfile.err  # Standard error
-#SBATCH --array=0-6                   # 7 backgrounds → 7 tasks
+#SBATCH --array=0-4                   # 7 backgrounds → 5 tasks
 
 # Activate conda environment
 source activate lantern
 
-BACKGROUNDS=("WT" "Alpha" "Delta" "BA1" "BA2" "BA4" "BQ")
+BACKGROUNDS=("WT" "Alpha" "Delta" "BA1" "BA2")
 
 background=${BACKGROUNDS[$SLURM_ARRAY_TASK_ID]}
 
