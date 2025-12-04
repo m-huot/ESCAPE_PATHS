@@ -6,12 +6,11 @@
 #SBATCH --mem=2000  # memory in Mb
 #SBATCH -o proba_outfile  # send stdout to outfile
 #SBATCH -e proba_errfile  # send stderr to errfile
-#SBATCH -t 6:00:00  # time requested in hour:minute:second
+#SBATCH -t 10:00:00  # time requested in hour:minute:second
 
 source activate lantern
 cd ../mean_field_theory
 
 # Run the Python script with the specified parameters
-python3 script_get_proba.py --folder 'results_scripts/covid_D_20' --beta_rbm 1. --init 'ba1' --out_folder 'results_scripts/covid_D_20'
+python3 script_cocktail_analysis.py
 echo 
-

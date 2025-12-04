@@ -20,7 +20,7 @@ beta_ab=1
 D=20
 T=20
 
-folder_name="mean_f_free_ab_beta_ab_${beta_ab}_D_${D}_bg_${background}"
+folder_name="results_scripts/background/mean_f_free_ab_beta_ab_${beta_ab}_D_${D}_bg_${background}"
 
 cd ../mean_field_theory
 

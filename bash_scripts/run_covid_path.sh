@@ -12,6 +12,6 @@ source activate lantern
 cd ../covid
 
 # Run the Python script with the specified parameters
-python3 script_covid_path.py --T 20 --beta_w 1 --n_path 100 --sampling_steps 3000 --warming_steps 10000
+python3 script_covid_path.py --T 20 --beta_ab 1 --n_path 100 --sampling_steps 3000 --warming_steps 10000
 
 echo 
