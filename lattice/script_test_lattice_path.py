@@ -75,10 +75,10 @@ def P_fixation(v, v_prime):
 
 
 class customed_lattice:
-    def __init__(self, Lattice_model, w=None, beta_w=0, beta_lattice=1000):
+    def __init__(self, Lattice_model, w=None, beta_ab=1, beta_lattice=1000):
         self.Lattice_model = Lattice_model
         self.w = w
-        self.beta_w = beta_w
+        self.beta_ab = beta_ab
         self.beta_lattice = beta_lattice
 
     def __call__(self, v):
@@ -86,14 +86,10 @@ class customed_lattice:
         v_transfo = lattice.string2seq(v_string)
         score = np.log(self.Lattice_model(v_transfo)) * self.beta_lattice
         if self.w is not None:
-            # score += self.beta_w * np.dot(one_hot_encode_concat(v), self.w)
             epsilon = 0.01  # min binding
-            score += np.log(
-                1
-                - np.exp(
-                    -epsilon - self.beta_w * np.dot(one_hot_encode_concat(v), self.w)
-                )
-            )
+            score += (
+                np.log(1 - np.exp(-epsilon - np.dot(one_hot_encode_concat(v), self.w)))
+            ) * self.beta_ab
         return score
 
 
@@ -128,12 +124,12 @@ def main():
             if i != wt_aa:
                 w[site * 20 + i] = 1
 
-    beta_array = [1, 2, 3]
+    beta_array = [0, 0.5, 1, 3, 5, 10]
 
     for T in [6]:
-        for beta_w in beta_array:
+        for beta_ab in beta_array:
             customed_model = customed_lattice(
-                lattice_model, w=w, beta_w=beta_w, beta_lattice=1000
+                lattice_model, w=w, beta_ab=beta_ab, beta_lattice=1000
             )
             path = Path(
                 v_start=PROTEIN_INIT,
@@ -145,7 +141,7 @@ def main():
                 T=T,
             )
 
-            output_dir = f"paths/test_w_upper_T{T}_beta_w_{beta_w}/"
+            output_dir = f"paths/test_w_upper_T{T}_beta_ab_{beta_ab}/"
             path.generate_paths(
                 output_directory=output_dir,
                 warming_steps=args.warming_steps,

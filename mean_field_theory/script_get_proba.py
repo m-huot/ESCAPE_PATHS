@@ -7,7 +7,6 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from utils_mean_field import *
 from script_mean_field_covid import *
-# from utils_analysis_mf import *
 
 # Setup paths and imports
 main_path = "../"
@@ -26,13 +25,20 @@ def main(args):
     os.chdir(main_path + "mean_field_theory")
 
     # Load WT sequence
-    PROT_INIT = Proteins_utils.load_FASTA(
-        main_path + "covid/exp_data/wt_omicron.fasta"
-    )[0]
-    PROT_INIT = PROT_INIT[BEGIN:-END]
+    if args.init == "wt":
+        PROT_INIT = Proteins_utils.load_FASTA(
+            main_path + "covid/exp_data/wt_omicron.fasta"
+        )[0][BEGIN:-END]
+    elif args.init == "ba1":
+        PROT_INIT = Proteins_utils.load_FASTA(
+            main_path + "covid/exp_data/wt_omicron.fasta"
+        )[1][BEGIN:-END]
+    else:
+        raise ValueError("Invalid init option. Choose 'wt' or 'ba1'.")
 
     L = PROT_INIT.shape[0]
     Q = 20
+    g = np.expand_dims(RBM.vlayer.fields[:, :], axis=-1)
 
     # Antibody escape vectors
     ab_names = list(ESCAPE_VECTORS.keys())
@@ -41,33 +47,33 @@ def main(args):
         w_ab = ESCAPE_VECTORS[ab].reshape(L, Q)
         wab[:, :, idx] = w_ab
 
-    # Validate escape vector signs
+    # # Validate escape vector signs
     for i in range(len(ab_names)):
         if np.any(wab[:, :, i] > 0):
             raise ValueError(f"Escape vector {ab_names[i]} has positive coeffs")
 
     # RBM weights and gamma functions
     wgamma = np.transpose(RBM.weights[:, :, :], (1, 2, 0))
-    g = np.expand_dims(RBM.vlayer.fields[:, :], axis=-1)
-    gamma_f_list = create_gamma_functions(
-        torch.tensor(RBM.hlayer.gamma_plus),
-        torch.tensor(RBM.hlayer.gamma_minus),
-        torch.tensor(RBM.hlayer.theta_plus),
-        torch.tensor(RBM.hlayer.theta_minus),
-    )
+    # gamma_f_list = create_gamma_functions(
+    #     torch.tensor(RBM.hlayer.gamma_plus),
+    #     torch.tensor(RBM.hlayer.gamma_minus),
+    #     torch.tensor(RBM.hlayer.theta_plus),
+    #     torch.tensor(RBM.hlayer.theta_minus),
+    #     L,
+    # )
 
-    all_s_functions = []
+    # all_s_functions = []
     w_components = []
-    name_array = []
+    # name_array = []
 
-    ab_function_list = create_ab_functions(len(ab_names), 1)
-    all_s_functions.extend(ab_function_list)
+    # ab_function_list = create_ab_functions(len(ab_names), 1, L=L)
+    # all_s_functions.extend(ab_function_list)
     w_components.append(wab)
-    name_array.extend(ab_names)
+    # name_array.extend(ab_names)
 
     w_components.append(wgamma)
-    all_s_functions.extend(gamma_f_list)
-    name_array.extend(["gamma " + str(i) for i in range(len(gamma_f_list))])
+    # all_s_functions.extend(gamma_f_list)
+    # name_array.extend(["gamma " + str(i) for i in range(len(gamma_f_list))])
 
     w = torch.tensor(np.concatenate(w_components, axis=-1))
 
@@ -104,7 +110,7 @@ def main(args):
             path_data.append(a)
 
         path_data = np.array(path_data).T
-        output_path = os.path.join(args.out_folder, f"{folder}a.npy")
+        output_path = os.path.join(args.out_folder, f"{folder}.npy")
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         np.save(output_path, path_data)
 
@@ -125,6 +131,7 @@ if __name__ == "__main__":
         help="Output folder",
     )
     parser.add_argument("--beta_rbm", type=float, default=1, help="Beta rbm")
+    parser.add_argument("--init", type=str, default="wt", help="Init protein")
 
     args = parser.parse_args()
     main(args)

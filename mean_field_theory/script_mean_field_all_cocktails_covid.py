@@ -8,7 +8,7 @@ from itertools import product
 from tqdm import tqdm
 from utils_mean_field import *
 
-# Global imports (must be outside the function)
+# Global imports
 main_path = "../"
 sys.path.append(main_path + "PGM/source/")
 sys.path.append(main_path + "PGM/utilities/")
@@ -28,39 +28,23 @@ import utilities, Proteins_utils, sequence_logo, plots_utils
 def main(args):
     os.chdir(main_path + "covid/")
 
-    # Load protein sequences
-    if args.init == "wt":
-        PROT_INIT = Proteins_utils.load_FASTA("../covid/exp_data/wt_omicron.fasta")[0][
-            BEGIN:-END
-        ]
-    elif args.init == "ba1":
-        PROT_INIT = Proteins_utils.load_FASTA("../covid/exp_data/wt_omicron.fasta")[1][
-            BEGIN:-END
-        ]
-    else:
-        raise ValueError("Invalid init option. Choose 'wt' or 'ba1'.")
+    PROT_INIT = Proteins_utils.load_FASTA("../covid/exp_data/wt_omicron.fasta")[0][
+        BEGIN:-END
+    ]
     L = PROT_INIT.shape[0]
     Q = 20
     T = args.T + 1
+    Q_C = args.D
 
-    # Constants
-    # GAMMA = args.D / L  # D/L
-    # Q_C = 1 - GAMMA / args.T
-    Q_C = args.D  # Directly use D as Q_C
-
-    # Antibody weights
     ab_names = list(ESCAPE_VECTORS.keys())
     wab = np.zeros((L, Q, len(ab_names)))
     for idx, ab in enumerate(ab_names):
-        w_ab = ESCAPE_VECTORS[ab].reshape(L, Q)  # "no bias"
-        wab[:, :, idx] = w_ab
+        wab[:, :, idx] = ESCAPE_VECTORS[ab].reshape(L, Q)
 
-    # make sure only<=0 coeffs
     for i in range(len(ab_names)):
         if np.any(wab[:, :, i] > 0):
             raise ValueError(f"Escape vector {ab_names[i]} has positive coeffs")
 
-    # RBM weights
     wgamma = np.transpose(RBM.weights[:, :, :], (1, 2, 0))
     g = np.expand_dims(RBM.vlayer.fields[:, :], axis=-1)
     gamma_f_list = create_gamma_functions(
@@ -76,10 +60,17 @@ def main(args):
     w_components = []
     name_array = []
 
-    ab_function_list = create_ab_functions(len(ab_names), args.beta_ab, L=L)
+    # --- MODIFIED SECTION BELOW ---
+    ab_indices = [ab_names.index(name) for name in args.ab_list]
+    betas_ab = np.zeros(len(ab_names))
+    for i in ab_indices:
+        betas_ab[i] = args.beta_ab
+
+    ab_function_list = create_ab_functions(len(ab_names), betas_ab, L=L)
     all_s_functions.extend(ab_function_list)
     w_components.append(wab)
     name_array.extend(ab_names)
+    # --- END MODIFIED SECTION ---
 
     w_components.append(wgamma)
     all_s_functions.extend(gamma_f_list)
@@ -91,12 +82,12 @@ def main(args):
     print(f"Number of functions: {K}")
 
     # Initialize variables for gradient descent
-    q = torch.zeros(T - 1, requires_grad=True)
+    q = torch.ones(T - 1, requires_grad=True)
 
     m_0 = torch.zeros(K)
 
     for k in range(K):
-        m_0[k] = sum(w[i, PROT_INIT[i], k] for i in range(len(PROT_INIT)))  # / L
+        m_0[k] = sum(w[i, PROT_INIT[i], k] for i in range(len(PROT_INIT))) / L
 
     mint = torch.zeros(T, K)
     for t in range(1, T):
@@ -168,121 +159,44 @@ def main(args):
     print("q_array", q_array.shape)
     np.save(f"{folder}/q_array.npy", q_array)
 
-    dm_array = torch.stack(dm_array)
-    dm_array = dm_array.detach().numpy()
-    print("dm_array", dm_array.shape)
-    np.save(f"{folder}/dm_array.npy", dm_array)
+    # dm_array = torch.stack(dm_array)
+    # dm_array = dm_array.detach().numpy()
+    # print("dm_array", dm_array.shape)
+    # np.save(f"{folder}/dm_array.npy", dm_array)
 
-    dq_array = torch.stack(dq_array)
-    dq_array = dq_array.detach().numpy()
-    print("dq_array", dq_array.shape)
-    np.save(f"{folder}/dq_array.npy", dq_array)
+    # dq_array = torch.stack(dq_array)
+    # dq_array = dq_array.detach().numpy()
+    # print("dq_array", dq_array.shape)
+    # np.save(f"{folder}/dq_array.npy", dq_array)
 
-    qhat_array = torch.stack(qhat_array)
-    qhat_array = qhat_array.detach().numpy()
-    print("qhat_array", qhat_array.shape)
-    np.save(f"{folder}/qhat_array.npy", qhat_array)
+    # qhat_array = torch.stack(qhat_array)
+    # qhat_array = qhat_array.detach().numpy()
+    # print("qhat_array", qhat_array.shape)
+    # np.save(f"{folder}/qhat_array.npy", qhat_array)
 
-    mhat_array = torch.stack(mhat_array)
-    mhat_array = mhat_array.detach().numpy()
-    print("mhat_array", mhat_array.shape)
-    np.save(f"{folder}/mhat_array.npy", mhat_array)
-
-    data_numpy = q_array
-
-    plt.figure(figsize=(10, 6))  # Larger size for clarity
-    for i in range(data_numpy.shape[1]):  # Plot each column (line) with a label
-        plt.plot(data_numpy[:, i], alpha=0.75, label=f"q_{i + 1}", linewidth=2)
-
-    # Add horizontal lines
-    plt.axhline(
-        y=Q_C,
-        color="green",
-        linestyle=":",
-        linewidth=2,
-        label="Q (hard wall)",  # Plain text label
-    )
-
-    plt.axhline(
-        y=data_numpy[-1],
-        color="blue",
-        linestyle="--",
-        linewidth=2,
-        label="q_i",  # Plain text label
-    )
-    # Enhancing the plot for publication
-    plt.xlabel("Iterations", fontsize=14)
-    plt.ylabel("Q", fontsize=14)
-    plt.title("Q evolution Over Iterations", fontsize=16)
-    plt.legend(fontsize=12, loc="upper right")
-    plt.grid(True, linestyle="--", alpha=0.6)
-    plt.tight_layout()
-
-    # Save the figure with high resolution for publication
-    plt.savefig(args.folder + "/Q_Evolution_covid.png", dpi=300)
-
-    # Show the plot
-    plt.show()
-
-    m_array_np = m_array
-
-    # Determine dimensions
-    iterations = len(m_array_np)
-
-    # Prepare the subplots: arrange in (K // 4) rows and 4 columns for clarity
-    rows = (K + 3) // 4  # Calculate the number of rows needed (ceiling of K/4)
-    cols = min(K, 4)  # Maximum of 4 columns
-    fig, axes = plt.subplots(
-        rows, cols, figsize=(4 * cols, 6 * rows)
-    )  # Dynamically adjust figure size
-
-    # Flatten axes array for easy indexing and handle edge cases
-    axes = axes.flatten() if K > 1 else [axes]  # Flatten for single-dimension indexing
-
-    # Plot evolution for each antibody
-    for k in range(K):
-        for row in range(
-            m_array_np[0].shape[0]
-        ):  # Number of rows (values per antibody)
-            row_values = [m_array_np[i][row, k] for i in range(iterations)]
-            axes[k].plot(
-                range(iterations),
-                row_values,
-                marker="o",
-                label=f"m {row}",
-                alpha=0.8,
-                markersize=4,
-            )
-
-        # Customize each subplot
-        axes[k].set_title(name_array[k], fontsize=14)
-        axes[k].set_xlabel("Iterations", fontsize=12)
-        axes[k].set_ylabel("m", fontsize=12)
-        axes[k].legend(fontsize=10)
-        axes[k].grid(True, linestyle="--", alpha=0.6)
-
-    # Hide any unused subplots (if K is not a multiple of 4)
-    for idx in range(K, len(axes)):
-        axes[idx].axis("off")  # Turn off unused axes
-
-    # Adjust layout for clarity
-    plt.tight_layout()
-    plt.savefig(args.folder + "/m_Evolution_covid.png", dpi=300)
-
-    plt.show()
+    # mhat_array = torch.stack(mhat_array)
+    # mhat_array = mhat_array.detach().numpy()
+    # print("mhat_array", mhat_array.shape)
+    # np.save(f"{folder}/mhat_array.npy", mhat_array)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Mean field implementation using real COVID model."
     )
-    parser.add_argument("--T", type=int, default=20, help="Number of time steps")
+    parser.add_argument(
+        "--ab_list",
+        nargs="+",
+        type=str,
+        default=[],
+        help="List of antibody names to apply beta_ab to",
+    )
+    parser.add_argument("--T", type=int, default=5, help="Number of time steps")
     parser.add_argument("--N_ITER", type=int, default=200, help="Number of iterations")
     parser.add_argument("--EPS", type=float, default=0.05, help="Step size")
-    parser.add_argument("--D", type=float, default=20, help="Gamma coefficient")
-
+    parser.add_argument("--D", type=float, default=5, help="Gamma coefficient")
     parser.add_argument(
-        "--folder", type=str, default="results_script2", help="Output folder"
+        "--folder", type=str, default="results_script", help="Output folder"
     )
     parser.add_argument("--beta_ab", type=float, default=1, help="Beta ab")
     parser.add_argument("--beta_rbm", type=float, default=1, help="Beta rbm")
@@ -295,8 +209,5 @@ if __name__ == "__main__":
         default="cont",
         help="Phi continuity type",
     )
-    # add arg backgound
-    parser.add_argument("--init", type=str, default="wt", help="Init protein")
-
     args = parser.parse_args()
     main(args)

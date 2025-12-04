@@ -33,9 +33,8 @@ def main(args):
     ]
     L = PROT_INIT.shape[0]
     Q = 20
-    T = args.T
-    GAMMA = args.D / L
-    Q_C = 1 - GAMMA / T
+    T = args.T + 1
+    Q_C = args.D
 
     ab_names = list(ESCAPE_VECTORS.keys())
     wab = np.zeros((L, Q, len(ab_names)))
@@ -53,6 +52,7 @@ def main(args):
         torch.tensor(RBM.hlayer.gamma_minus),
         torch.tensor(RBM.hlayer.theta_plus),
         torch.tensor(RBM.hlayer.theta_minus),
+        L,
         beta_rbm=args.beta_rbm,
     )
 
@@ -66,7 +66,7 @@ def main(args):
     for i in ab_indices:
         betas_ab[i] = args.beta_ab
 
-    ab_function_list = create_ab_functions(len(ab_names), betas_ab)
+    ab_function_list = create_ab_functions(len(ab_names), betas_ab, L=L)
     all_s_functions.extend(ab_function_list)
     w_components.append(wab)
     name_array.extend(ab_names)

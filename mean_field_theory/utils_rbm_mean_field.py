@@ -75,7 +75,12 @@ import torch
 
 
 def create_gamma_functions(
-    gamma_plus_array, gamma_minus_array, theta_plus_array, theta_minus_array, beta_rbm=1
+    gamma_plus_array,
+    gamma_minus_array,
+    theta_plus_array,
+    theta_minus_array,
+    L,
+    beta_rbm=1,
 ):
     """
     Create a list of -gamma functions using the given hyperparameter arrays.
@@ -118,7 +123,8 @@ def create_gamma_functions(
                 -cgf_from_inputs_dReLU(
                     I, gamma_plus, gamma_minus, theta_plus, theta_minus
                 )
-                * beta_rbm  # E=minus gamma
+                * beta_rbm
+                # E=minus gamma
             )
 
         # Append the function to the list
@@ -127,7 +133,7 @@ def create_gamma_functions(
     return gamma_functions
 
 
-def create_ab_functions(n_ab, beta_ab):
+def create_ab_functions(n_ab, beta_ab, L):
     """
     Create a list of n_ab escape functions.
     If beta_ab is a float, it is broadcast to all functions.

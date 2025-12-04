@@ -24,10 +24,9 @@ sys.path.append(main_path + "lattice/")
 
 from importlib import reload, import_module
 
-from path import *
-
 import lattice
 from utils_rbm_mean_field import *
+from utils_mean_field import *
 
 
 # %% [markdown]
@@ -36,7 +35,7 @@ from utils_rbm_mean_field import *
 
 def main(args):
     # %%
-    RBM = RBM_utils.loadRBM("../lattice/rbm/RBM_structure_0_beta_1000")
+    RBM = RBM_utils.loadRBM("../lattice/rbm/RBM_structure_0_beta_100")
     results_root = args.folder
 
     # %%
@@ -44,15 +43,30 @@ def main(args):
         "../lattice/msa/output_msa_structure_0_beta_1000.fasta"
     )[0]  # Load the protein sequence from the FASTA file.
 
+    POS_CHARGE = {"K", "R", "H"}
+    NEG_CHARGE = {"D", "E"}
+
     sites = np.array([9, 10, 11, 12, 13, 16, 17, 25, 26]) - 1
     print("sites upper face", sites)
     w_bias = np.zeros((PROT_INIT.shape[0], 20, 1))
     for site in sites:
-        wt_aa = PROT_INIT[site]
-        print("wt_aa", Proteins_utils.num2seq(np.array([wt_aa])))
-        # put a 1 everywhere except for the wt_aa
+        wt_idx = PROT_INIT[site]  # Integer index of WT amino acid
+        wt_char = CODE_RBM[wt_idx]  # Character (e.g., 'K')
+
         for i in range(20):
-            if i != wt_aa:
+            mut_char = CODE_RBM[i]  # Character of the mutation
+
+            # Determine charge status
+            wt_is_pos = wt_char in POS_CHARGE
+            wt_is_neg = wt_char in NEG_CHARGE
+            mut_is_pos = mut_char in POS_CHARGE
+            mut_is_neg = mut_char in NEG_CHARGE
+
+            # Logic: WT is (+) and Mut is (-) OR WT is (-) and Mut is (+)
+            is_charge_flip = (wt_is_pos and mut_is_neg) or (wt_is_neg and mut_is_pos)
+
+            # Check if mutation exists and if it is a charge flip
+            if i != wt_idx and is_charge_flip:
                 w_bias[site, i, 0] = 1
 
     L = PROT_INIT.shape[0]
@@ -64,31 +78,32 @@ def main(args):
     wgamma = np.transpose(RBM.weights[:, :, :], (1, 2, 0))
     g = np.array(np.expand_dims(RBM.vlayer.fields[:, :], axis=-1))
     print("g", g.shape)
-    gamma_f_list = create_gamma_functions(
-        torch.tensor(RBM.hlayer.gamma_plus),
-        torch.tensor(RBM.hlayer.gamma_minus),
-        torch.tensor(RBM.hlayer.theta_plus),
-        torch.tensor(RBM.hlayer.theta_minus),
-        beta_rbm=beta_rbm,
-    )
+    # gamma_f_list = create_gamma_functions(
+    #     torch.tensor(RBM.hlayer.gamma_plus),
+    #     torch.tensor(RBM.hlayer.gamma_minus),
+    #     torch.tensor(RBM.hlayer.theta_plus),
+    #     torch.tensor(RBM.hlayer.theta_minus),
+    #     L,
+    #     beta_rbm=beta_rbm,
+    # )
 
-    all_s_functions = []
+    # all_s_functions = []
     w_components = []
-    name_array = []
+    # name_array = []
 
     w_components.append(wgamma)
-    all_s_functions.extend(gamma_f_list)
-    name_array.extend(["gamma " + str(i) for i in range(len(gamma_f_list))])
+    # all_s_functions.extend(gamma_f_list)
+    # name_array.extend(["gamma " + str(i) for i in range(len(gamma_f_list))])
 
     w = torch.tensor(np.concatenate(w_components, axis=-1))
 
-    # add escape
-    def escape_function(G_t):
-        epsilon = 0.01
-        return -torch.log(1 - torch.exp(-epsilon - G_t))
+    # # add escape
+    # def escape_function(G_t):
+    #     epsilon = 0.01
+    #     return -torch.log(1 - torch.exp(-epsilon - G_t)) * args.beta_ab
 
-    all_s_functions.append(escape_function)
-    name_array.append("escape")
+    # all_s_functions.append(escape_function)
+    # name_array.append("escape")
     w = torch.cat((w, torch.tensor(w_bias)), dim=-1)
 
     # Define folders to read from

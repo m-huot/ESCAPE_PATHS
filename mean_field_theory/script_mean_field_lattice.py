@@ -28,6 +28,7 @@ from path import *
 
 import lattice
 from utils_rbm_mean_field import *
+from utils_mean_field import *
 
 
 # %% [markdown]
@@ -36,31 +37,46 @@ from utils_rbm_mean_field import *
 
 def main(args):
     # %%
-    RBM = RBM_utils.loadRBM("../lattice/rbm/RBM_structure_0_beta_1000")
+    RBM = RBM_utils.loadRBM("../lattice/rbm/RBM_structure_0_beta_100")
 
     # %%
     PROTEIN_INIT = Proteins_utils.load_FASTA(
         "../lattice/msa/output_msa_structure_0_beta_1000.fasta"
     )[0]  # Load the protein sequence from the FASTA file.
 
+    POS_CHARGE = {"K", "R", "H"}
+    NEG_CHARGE = {"D", "E"}
+
     sites = np.array([9, 10, 11, 12, 13, 16, 17, 25, 26]) - 1
     print("sites upper face", sites)
     w_bias = np.zeros((PROTEIN_INIT.shape[0], 20, 1))
     for site in sites:
-        wt_aa = PROTEIN_INIT[site]
-        print("wt_aa", Proteins_utils.num2seq(np.array([wt_aa])))
-        # put a 1 everywhere except for the wt_aa
+        wt_idx = PROTEIN_INIT[site]  # Integer index of WT amino acid
+        wt_char = CODE_RBM[wt_idx]  # Character (e.g., 'K')
+
         for i in range(20):
-            if i != wt_aa:
-                w_bias[site, i, 0] = 1 * args.beta_w
+            mut_char = CODE_RBM[i]  # Character of the mutation
+
+            # Determine charge status
+            wt_is_pos = wt_char in POS_CHARGE
+            wt_is_neg = wt_char in NEG_CHARGE
+            mut_is_pos = mut_char in POS_CHARGE
+            mut_is_neg = mut_char in NEG_CHARGE
+
+            # Logic: WT is (+) and Mut is (-) OR WT is (-) and Mut is (+)
+            is_charge_flip = (wt_is_pos and mut_is_neg) or (wt_is_neg and mut_is_pos)
+
+            # Check if mutation exists and if it is a charge flip
+            if i != wt_idx and is_charge_flip:
+                w_bias[site, i, 0] = 1
 
     L = PROTEIN_INIT.shape[0]
     Q = 20
     T = args.T + 1
 
     # Constants
-    GAMMA = args.D / L
-    Q_C = 1 - GAMMA / args.T
+    # GAMMA = args.D / L
+    Q_C = args.D
     beta_rbm = args.beta_rbm
 
     # RBM weights
@@ -72,6 +88,7 @@ def main(args):
         torch.tensor(RBM.hlayer.gamma_minus),
         torch.tensor(RBM.hlayer.theta_plus),
         torch.tensor(RBM.hlayer.theta_minus),
+        L,
         beta_rbm=beta_rbm,
     )
 
@@ -87,8 +104,8 @@ def main(args):
 
     # add escape
     def escape_function(G_t):
-        epsilon = 0.01
-        return -torch.log(1 - torch.exp(-epsilon - G_t))
+        epsilon = 0.05
+        return -torch.log(1 - torch.exp(-epsilon - G_t)) * args.beta_ab
 
     all_s_functions.append(escape_function)
     name_array.append("escape")
@@ -99,12 +116,12 @@ def main(args):
     print(f"Number of functions: {K}")
 
     # Initialize variables for gradient descent
-    q = torch.ones(T - 1, requires_grad=True)
+    q = torch.zeros(T - 1, requires_grad=True)
 
     m_0 = torch.zeros(K)
 
     for k in range(K):
-        m_0[k] = sum(w[i, PROTEIN_INIT[i], k] for i in range(len(PROTEIN_INIT))) / L
+        m_0[k] = sum(w[i, PROTEIN_INIT[i], k] for i in range(len(PROTEIN_INIT)))  # / L
 
     mint = torch.zeros(T, K)
     for t in range(1, T):
@@ -154,7 +171,7 @@ def main(args):
     )
 
     # Save results
-    os.chdir("../mean_field_theory/results_scripts/lattice")
+    os.chdir("../mean_field_theory")
     folder = args.folder
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -210,17 +227,17 @@ def main(args):
         label="Q (hard wall)",  # Plain text label
     )
     plt.axhline(
-        y=1 - np.sum(1 - data_numpy[-1]),
+        y=data_numpy[-1],
         color="blue",
         linestyle="--",
         linewidth=2,
-        label="Path cumulated overlap (1 - sum(1 - q_i))",  # Plain text label
+        label="q_i",  # Plain text label
     )
 
     # Enhancing the plot for publication
     plt.xlabel("Iterations", fontsize=14)
     plt.ylabel("Q", fontsize=14)
-    plt.title("Q (site average overlap) evolution Over Iterations", fontsize=16)
+    plt.title("Q evolution Over Iterations", fontsize=16)
     plt.legend(fontsize=12, loc="upper right")
     plt.grid(True, linestyle="--", alpha=0.6)
     plt.tight_layout()
@@ -301,7 +318,7 @@ if __name__ == "__main__":
         default="cont",
         help="Phi continuity type",
     )
-    parser.add_argument("--beta_w", type=float, default=1, help="Immune pressure")
+    parser.add_argument("--beta_ab", type=float, default=1, help="Immune pressure")
 
     args = parser.parse_args()
     main(args)
