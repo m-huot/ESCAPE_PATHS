@@ -9,8 +9,8 @@ from tqdm import tqdm
 from utils_mean_field import *
 import torch
 from collections.abc import Iterable
+import torch
 
-# Global imports (must be outside the function)
 main_path = "../"
 sys.path.append(main_path + "PGM/source/")
 sys.path.append(main_path + "PGM/utilities/")
@@ -32,28 +32,21 @@ def cgf_from_inputs_dReLU(
     theta_plus,
     theta_minus,
 ):
-    # Define a small constant to avoid log(0)
     eps = 1e-12
 
-    # Ensure all constants are computed in the same precision
     sqrt_gamma_plus = torch.sqrt(gamma_plus)
     sqrt_gamma_minus = torch.sqrt(gamma_minus)
     log_gamma_plus = torch.log(gamma_plus + eps)
     log_gamma_minus = torch.log(gamma_minus + eps)
 
-    # Clamp the activations to a safe range
-
     def log_erf_times_gauss_torch(x):
-        # Use the same device and dtype as x
         sqrt2 = torch.sqrt(torch.tensor(2.0, dtype=x.dtype, device=x.device))
         logsqrtpiover2 = 0.5 * torch.log(
             torch.tensor(torch.pi / 2, dtype=x.dtype, device=x.device) + eps
         )
 
-        # For x < 4, compute the exact form adding eps to avoid log(0)
         branch1 = 0.5 * x**2 + torch.log(torch.erfc(x / sqrt2) + eps) + logsqrtpiover2
 
-        # For x >= 4, use an asymptotic expansion, again adding eps where needed
         branch2 = -torch.log(x + eps) + torch.log(1 - 1 / (x**2) + 3 / (x**4) + eps)
 
         return torch.where(x < 4, branch1, branch2)
@@ -67,11 +60,7 @@ def cgf_from_inputs_dReLU(
         - 0.5 * log_gamma_minus
     )
 
-    # Use torch.logaddexp to stably combine the two branches
     return torch.logaddexp(Z_plus, Z_minus)
-
-
-import torch
 
 
 def create_gamma_functions(
@@ -105,13 +94,11 @@ def create_gamma_functions(
     gamma_functions = []
 
     for i in range(len(theta_plus_array)):
-        # Capture the current set of hyperparameters
         theta_plus = theta_plus_array[i]
         theta_minus = theta_minus_array[i]
         gamma_plus = gamma_plus_array[i]
         gamma_minus = gamma_minus_array[i]
 
-        # Define a gamma function for the current set of hyperparameters
         def cgf_from_inputs_dReLU_func(
             I,
             gamma_plus=gamma_plus,
@@ -124,10 +111,8 @@ def create_gamma_functions(
                     I, gamma_plus, gamma_minus, theta_plus, theta_minus
                 )
                 * beta_rbm
-                # E=minus gamma
             )
 
-        # Append the function to the list
         gamma_functions.append(cgf_from_inputs_dReLU_func)
 
     return gamma_functions
@@ -144,11 +129,11 @@ def create_ab_functions(n_ab, beta_ab, L):
         if len(beta_ab) != n_ab:
             raise ValueError("Length of beta_ab must match n_ab.")
     else:
-        beta_ab = [beta_ab] * n_ab  # broadcast scalar to list
+        beta_ab = [beta_ab] * n_ab
 
     functions = []
     for i in range(n_ab):
-        beta = beta_ab[i]  # capture by default argument
+        beta = beta_ab[i]
 
         def selection_coeff(G_t, beta=beta):
             if G_t >= 0:

@@ -93,7 +93,6 @@ class customed_lattice_RBM:
             score += (
                 np.log(1 - np.exp(-epsilon - np.dot(one_hot_encode_concat(v), self.w)))
             ) * self.beta_ab
-            # make score to scalar if array
         if isinstance(score, np.ndarray):
             score = score.item()
         return score
@@ -111,7 +110,6 @@ class customed_lattice_indep:
             score += (
                 np.log(1 - np.exp(-epsilon - np.dot(one_hot_encode_concat(v), self.w)))
             ) * self.beta_ab
-        # make score to scalar if array
         if isinstance(score, np.ndarray):
             score = score.item()
         return score
@@ -140,7 +138,6 @@ def main():
     protein_lattice = lattice.ProteinLattice(structure_idx=0)
     lattice_model = lattice.LatticeModel(protein_lattice)
 
-    # sites = np.array([9, 10, 11, 12, 13, 16, 17, 25, 26]) - 1
     POS_CHARGE = {"K", "R", "H"}
     NEG_CHARGE = {"D", "E"}
 
@@ -148,19 +145,17 @@ def main():
     w = np.zeros((PROTEIN_INIT.shape[0] * 20))
 
     for site in sites:
-        wt_idx = PROTEIN_INIT[site]  # Integer index of WT amino acid
-        wt_char = CODE_RBM[wt_idx]  # Character (e.g., 'K')
+        wt_idx = PROTEIN_INIT[site]
+        wt_char = CODE_RBM[wt_idx]
 
         for i in range(20):
-            mut_char = CODE_RBM[i]  # Character of the mutation
+            mut_char = CODE_RBM[i]
 
-            # Determine charge status
             wt_is_pos = wt_char in POS_CHARGE
             wt_is_neg = wt_char in NEG_CHARGE
             mut_is_pos = mut_char in POS_CHARGE
             mut_is_neg = mut_char in NEG_CHARGE
 
-            # Logic: WT is (+) and Mut is (-) OR WT is (-) and Mut is (+)
             is_charge_flip = (wt_is_pos and mut_is_neg) or (wt_is_neg and mut_is_pos)
 
             # Check if mutation exists and if it is a charge flip

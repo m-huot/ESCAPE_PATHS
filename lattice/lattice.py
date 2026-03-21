@@ -6,6 +6,7 @@ from collections import OrderedDict
 import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
 
 CODE_LATTICE = [
     "C",
@@ -131,40 +132,26 @@ class ProteinLattice:
         return new_seq
 
 
-### HOW TO USE THE LATTICE MODEL ###
-# lattice_model= lattice.ProteinLattice(energy_file="energies.dat", contact_map_file="contact_maps_10000.dat", structure_idx=0)
-
-
 class LatticeModel:
     def __init__(self, lattice_model):
         self.lattice_model = lattice_model
 
-        # Initialize an OrderedDict to store the cache (will store up to 100 entries)
         self.cache = OrderedDict()
 
     def __call__(self, x):
-        # Convert the array x into a tuple, so it can be used as a key in the cache
-        # array to lsit
+
         x_tuple = tuple(x)
 
-        # Check if x is already in the cache
         if x_tuple in self.cache:
-            # Move this key to the end to mark it as recently used
             self.cache.move_to_end(x_tuple)
-            # Return the cached value
             return self.cache[x_tuple]
 
-        # If x is not in the cache, calculate pnat
         pnat_value = self.lattice_model.calculate_pnat(x)
 
-        # Add the result to the cache
         self.cache[x_tuple] = pnat_value
 
-        # If the cache exceeds 100 items, remove the oldest entry (FIFO)
         if len(self.cache) > 100:
-            self.cache.popitem(
-                last=False
-            )  # Remove the first (least recently used) item
+            self.cache.popitem(last=False)
 
         return pnat_value
 
@@ -189,48 +176,40 @@ def backtrack_lattice_protein(contact_pairs):
       otherwise None.
     """
     N = 27
-    # Build adjacency constraints (chain connectivity and extra contacts)
     adjacency = {r: set() for r in range(1, N + 1)}
-    # Chain connectivity: residue i must be adjacent to i+1
     for i in range(1, N):
         adjacency[i].add(i + 1)
         adjacency[i + 1].add(i)
-    # Extra contact constraints
     for r1, r2 in contact_pairs:
         adjacency[r1].add(r2)
         adjacency[r2].add(r1)
 
-    # Define the 6 possible axis-aligned directions (no diagonal moves)
     directions = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]
 
-    positions = [None] * (N + 1)  # Using 1-indexing: positions[1] through positions[N]
-    used = set()  # To keep track of occupied lattice points
+    positions = [None] * (N + 1)
+    used = set()
 
     def place_residue(r):
         if r > N:
-            return True  # All residues placed successfully.
+            return True
 
         if r == 1:
-            # Fix residue 1 at (0,0,0)
             positions[r] = (0, 0, 0)
             used.add((0, 0, 0))
             return place_residue(r + 1)
         else:
-            # Place residue r adjacent to residue r-1 (only along one axis)
             x_prev, y_prev, z_prev = positions[r - 1]
             for dx, dy, dz in directions:
                 candidate = (x_prev + dx, y_prev + dy, z_prev + dz)
                 if candidate in used:
                     continue
 
-                # Tentatively assign candidate position to residue r
                 positions[r] = candidate
                 used.add(candidate)
 
-                # Check all constraints for residue r against already placed neighbors.
                 valid = True
                 for neighbor in adjacency[r]:
-                    if neighbor < r:  # neighbor already placed, must be adjacent
+                    if neighbor < r:
                         if not is_adjacent(positions[r], positions[neighbor]):
                             valid = False
                             break
@@ -239,23 +218,15 @@ def backtrack_lattice_protein(contact_pairs):
                     if place_residue(r + 1):
                         return True
 
-                # Backtrack if placement didn't lead to a solution.
                 used.remove(candidate)
                 positions[r] = None
 
-            # No valid placement found for residue r
             return False
 
     if place_residue(1):
-        # Return positions as a dictionary for residues 1 to N.
         return {r: positions[r] for r in range(1, N + 1)}
     else:
         return None
-
-
-import matplotlib.pyplot as plt
-from matplotlib import cm
-import numpy as np
 
 
 def _plot_lattice_protein(positions, node_values=None):
@@ -282,14 +253,13 @@ def _plot_lattice_protein(positions, node_values=None):
     if use_colormap:
         cmap = cm.get_cmap("coolwarm")  # blue to red
 
-    # Plot nodes and label them
     for r, (x, y, z) in positions.items():
         xs.append(x)
         ys.append(y)
         zs.append(z)
 
         if use_colormap:
-            color_val = node_values[r - 1]  # assumed 0-1
+            color_val = node_values[r - 1]
             node_color = cmap(color_val)
         else:
             node_color = "cyan"
@@ -308,7 +278,6 @@ def _plot_lattice_protein(positions, node_values=None):
             weight="bold",
         )
 
-    # Draw chain connectivity lines
     sorted_keys = sorted(positions.keys())
     for i in range(len(sorted_keys) - 1):
         r1 = sorted_keys[i]
@@ -317,7 +286,6 @@ def _plot_lattice_protein(positions, node_values=None):
         x2, y2, z2 = positions[r2]
         ax.plot([x1, x2], [y1, y2], [z1, z2], color="black", linewidth=2, zorder=3)
 
-    # Aesthetic cleanup
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_zticks([])
@@ -355,16 +323,13 @@ def get_contact_list(protein_idx, filename="contact_maps_10000.dat"):
 
     with open(filename, "r") as file:
         for line in file:
-            # Skip empty lines
             if not line.strip():
                 continue
-            # Split the line by whitespace and check for exactly three parts.
             parts = line.strip().split()
             if len(parts) != 3:
                 continue  # or raise an error if the file format is unexpected
 
             idx, r1, r2 = parts
-            # Convert indices to integers
             try:
                 idx = int(idx)
                 r1 = int(r1)

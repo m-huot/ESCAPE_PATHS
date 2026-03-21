@@ -163,7 +163,6 @@ class ProteinLatticeMSAGenerator:
 
 
 def main():
-    # Setup argparse for command line argument parsing
     parser = argparse.ArgumentParser(description="Generate lattice protein MSAs.")
     parser.add_argument(
         "--energy_file",
@@ -213,10 +212,8 @@ def main():
 
     args = parser.parse_args()
 
-    # Initialize the generator with the provided arguments
     generator = ProteinLatticeMSAGenerator(args.energy_file, args.contact_map_file)
 
-    # Generate MSA based on the arguments
     generator.generate_msa(
         args.structure_idx,
         args.beta,

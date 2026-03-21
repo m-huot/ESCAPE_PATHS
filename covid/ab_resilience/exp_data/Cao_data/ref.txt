@@ -1,6 +1,0 @@
-To get data: execute following: https://github.com/jbloomlab/SARS2-RBD-escape-calc/blob/main/process_data.ipynb
-
-https://github.com/jianfcpku/convergent_RBD_evolution
-https://www.nature.com/articles/s41586-022-05644-7#data-availability
-
-https://github.com/jianfcpku/SARS-CoV-2-reinfection-DMS/tree/e49798d872210ce745308b308857885aa225b90a

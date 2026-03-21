@@ -41,36 +41,24 @@ def av_distances_wt(generated_sequences):
 
 
 def one_hot_encode_concat(s):
-    # Number of categories for one-hot encoding, 21 for values 0 through 20
     num_categories = 20
-    # Create a tensor of zeros with shape [len(s), num_categories]
     one_hot_matrix = np.zeros((len(s), num_categories))
-
-    # Use  indexing to set the appropriate elements to 1
     for i, char in enumerate(s):
         one_hot_matrix[i, char] = 1
-    # Convert to 1D
     one_hot_encoded = one_hot_matrix.flatten()
 
     return one_hot_encoded
 
 
-def get_log_bindings(s, escape_vectors=ESCAPE_VECTORS):  # ESCAPE_VECTORS is a dic
+def get_log_bindings(s, escape_vectors=ESCAPE_VECTORS):
     s_hot = one_hot_encode_concat(s)
     return np.array([np.dot(s_hot, escape_vectors[aa]) for aa in escape_vectors.keys()])
 
 
-def get_expected_log_bindings(
-    proba, escape_vectors=ESCAPE_VECTORS
-):  # ESCAPE_VECTORS is a dic
+def get_expected_log_bindings(proba, escape_vectors=ESCAPE_VECTORS):
     proba = proba.flatten()
 
     return np.array([np.dot(proba, escape_vectors[aa]) for aa in escape_vectors.keys()])
-
-
-# if G_t >= 0:
-#                 raise ValueError("G_t must be less than 0 for antibodies")
-#             return -torch.log(1 - torch.exp(G_t))
 
 
 def get_ab_energy(s, escape_vectors=ESCAPE_VECTORS):
@@ -78,7 +66,6 @@ def get_ab_energy(s, escape_vectors=ESCAPE_VECTORS):
     Get the energy of the antibody given the sequence s.
     """
     log_bindings = get_log_bindings(s, escape_vectors)
-    # make sure the log_bindings is positive
     if np.any(log_bindings > 0):
         raise ValueError("Log bindings must be negative for antibodies")
     ab_energies = -np.log(1 - np.exp(log_bindings))

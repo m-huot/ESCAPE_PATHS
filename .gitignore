@@ -1,9 +1,6 @@
 lattice/paths/*
-covid/ab_resilience
 covid/paths/*
 covid/paths_nt/*
 mean_field_theory/results_scripts/*
 results_scripts.zip
 *.pyc
-mean_field_theory/obsolete/*
-mean_field_theory/results_scripts old/*

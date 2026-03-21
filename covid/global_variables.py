@@ -13,9 +13,7 @@ import rbm, RBM_utils
 
 BEGIN = 18
 END = 5
-# RBM = RBM_utils.loadRBM("../new_RBM_Covid_best2.data")
-# print all files in the directory
-# RBM = RBM_utils.loadRBM("wt_RBM_Covid.data")
+
 RBM = RBM_utils.loadRBM("rbms/ESMIF_RBM_wt_Covid_temp_1_nH_50_l1B_0.2.data")
 
 
@@ -23,16 +21,12 @@ def load_kd_vectors(directory):
     """
     Load all q vectors from the specified directory.
     """
-    kd_vectors = {}  # Dictionary to store q vectors, keyed by the antibody name
+    kd_vectors = {}
     for filename in os.listdir(directory):
         if filename.endswith(".npy"):
-            # Extract the antibody name from the filename
             antibody_name = filename.replace("delta_G.npy", "")
-            # Load the q vector
             kd_vector = np.load(os.path.join(directory, filename))
-            # print type
             kd_vectors[antibody_name] = kd_vector
-    # asser no inf, nan or raise error
     for antibody_name, kd_vector in kd_vectors.items():
         if np.any(np.isinf(kd_vector)):
             raise ValueError(f"Inf value in {antibody_name}")

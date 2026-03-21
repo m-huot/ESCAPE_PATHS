@@ -27,7 +27,6 @@ import math
 
 
 class Covid_Model:
-    # init with a list of tagets antibodies and array o
     def __init__(self, c_schedule=[-7], target_abs=None, beta=1):
         """
         Initialize the model with target antibodies and target c values.
@@ -42,7 +41,7 @@ class Covid_Model:
             self.target_abs = list(self.energy_model.kd_vectors.keys())
         else:
             self.target_abs = target_abs
-        self.beta=beta
+        self.beta = beta
 
     def __call__(self, seq, t=0):
         """
@@ -57,7 +56,7 @@ class Covid_Model:
 
         self.energy_model.raw_concentrations = concentrations
 
-        return -self.energy_model(seq)*self.beta
+        return -self.energy_model(seq) * self.beta
 
 
 class RBM_score_model:

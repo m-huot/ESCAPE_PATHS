@@ -60,7 +60,6 @@ def main(args):
     w_components = []
     name_array = []
 
-    # --- MODIFIED SECTION BELOW ---
     ab_indices = [ab_names.index(name) for name in args.ab_list]
     betas_ab = np.zeros(len(ab_names))
     for i in ab_indices:
@@ -70,7 +69,6 @@ def main(args):
     all_s_functions.extend(ab_function_list)
     w_components.append(wab)
     name_array.extend(ab_names)
-    # --- END MODIFIED SECTION ---
 
     w_components.append(wgamma)
     all_s_functions.extend(gamma_f_list)
@@ -81,7 +79,6 @@ def main(args):
 
     print(f"Number of functions: {K}")
 
-    # Initialize variables for gradient descent
     q = torch.ones(T - 1, requires_grad=True)
 
     m_0 = torch.zeros(K)
@@ -92,31 +89,24 @@ def main(args):
     mint = torch.zeros(T, K)
     for t in range(1, T):
         mint[t] = m_0
-    # Initialize other m[t] values between m[0] and m[T-1]
     m = torch.zeros(T, K, dtype=torch.float64, requires_grad=True)
     m_updated = m.clone()
 
-    # Assign m[0] and m[T-1]
     m_updated[0] = m_0
 
-    # Assign other m[t] values between m[0] and m[T-1]
     for t in range(1, T):
         m_updated[t] = m_0
 
-    # Ensure m retains gradients
     m = m_updated.clone().detach().requires_grad_(True)
 
-    # make sure no nan in m
     if torch.isnan(m).any():
         print("m has nan at init")
         raise ValueError("m has nan at init")
 
-    # no nan in w
     if torch.isnan(w).any():
         print("w has nan at init")
         raise ValueError("w has nan at init")
 
-    # Perform gradient descent
     mopt, qopt, m_array, q_array, dm_array, dq_array, qhat_array, mhat_array = (
         GradDescent_free(
             mstart=m,
@@ -137,18 +127,15 @@ def main(args):
         )
     )
 
-    # Save results
     os.chdir("../mean_field_theory")
     folder = args.folder
     if not os.path.exists(folder):
         os.makedirs(folder)
 
-    # # Save the final results
     np.save(f"{folder}/mopt.npy", mopt.detach().numpy())
     np.save(f"{folder}/qopt.npy", qopt.detach().numpy())
     print("mopt", mopt)
     print("mopt", mopt.shape)
-    # m_array to array. It is a list of tensors
     m_array = torch.stack(m_array)
     m_array = m_array.detach().numpy()
     print("m_array", m_array.shape)

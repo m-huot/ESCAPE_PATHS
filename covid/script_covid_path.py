@@ -16,7 +16,6 @@ from global_variables import BEGIN, END, RBM, CODE_RBM
 from utils_evaluate_seq import get_ab_energy
 
 
-# ------------- MAIN SCRIPT ------------------
 def main(args):
     PROT_INIT = Proteins_utils.load_FASTA("exp_data/wt_omicron.fasta")[0]
     PROT_INIT = PROT_INIT[BEGIN:-END]
