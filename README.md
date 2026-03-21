@@ -6,7 +6,7 @@
 
 Unzip all folders within repository so that the repository has direct access to the extracted files: lattice/paths.zip, covid/paths.zip, covid/paths_nt.zip .
 
-Download the dataset results_scripts from [Zenodo](https://doi.org/10.5281/zenodo.17016973) and place it in the `mean_field_theory/` directory.  
+Download the dataset results_scripts from [Zenodo](https://doi.org/10.5281/zenodo.19154385) and place it in the `mean_field_theory/` directory.  
 
 Clone PGM repository (https://github.com/jertubiana/PGM) inside main folder.
 
