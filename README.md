@@ -31,4 +31,14 @@ Clone PGM repository (https://github.com/jertubiana/PGM) inside main folder.
 If you use **Escape Funnels** in your research, please cite:
 
 ```bibtex
-
+@article{Huot_funnels,
+  author  = {Marian Huot and Dianzhuo Wang and Eugene Shakhnovich and Rémi Monasson and Simona Cocco},
+  title   = {Constrained evolutionary funnels shape viral immune escape},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {123},
+  number  = {16},
+  pages   = {e2536956123},
+  year    = {2026},
+  doi     = {10.1073/pnas.2536956123},
+  url     = {https://www.pnas.org/doi/abs/10.1073/pnas.2536956123}
+}
